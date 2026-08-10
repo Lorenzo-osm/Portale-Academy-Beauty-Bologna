@@ -2284,11 +2284,23 @@
 <div id="view-login" class="hidden">
   <div class="login-card">
     <div class="login-logo-ring">
-      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <img id="login-logo-img" alt="Academy Beauty" style="width:230px;height:230px;object-fit:contain;display:none;">
+      <svg id="login-logo-fallback" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="18" cy="18" r="16" stroke="#cf5896" stroke-width="1.5"/>
         <text x="18" y="24" text-anchor="middle" font-size="14" font-family="'Segoe UI',sans-serif" font-weight="700" fill="#cf5896">AB</text>
       </svg>
     </div>
+    <script>
+      (function() {
+        var sorgente = document.getElementById('logo-osm') || document.getElementById('logo-navbar');
+        if (sorgente && sorgente.getAttribute('src')) {
+          var img = document.getElementById('login-logo-img');
+          img.src = sorgente.getAttribute('src');
+          img.style.display = 'block';
+          document.getElementById('login-logo-fallback').style.display = 'none';
+        }
+      })();
+    </script>
     <div class="login-title">Academy Beauty</div>
     <div class="login-subtitle">Accedi al portale di monitoraggio</div>
     <div class="login-error" id="login-error"></div>
