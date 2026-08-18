@@ -2246,6 +2246,129 @@
   body.consulente-mode #iscritti-action-buttons { display: none !important; }
   body.consulente-mode #page-iscritti label.toggle-presenza { pointer-events: none; opacity: 0.65; }
   body.consulente-mode #page-iscritti details.corsi-manager { display: none !important; }
+
+  /* ===== SEZIONE STATISTICHE ===== */
+  .stat-az-selector-wrap {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 22px 26px;
+    margin-bottom: 24px;
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .stat-az-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--testo-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+  .stat-az-select {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--testo-chiaro);
+    padding: 9px 36px 9px 14px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23cf5896' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    min-width: 220px;
+    flex: 1;
+    max-width: 400px;
+    transition: border-color 0.2s;
+  }
+  .stat-az-select:focus { border-color: var(--rosa); }
+  .stat-az-select option { background: var(--blu-notte); }
+  .stat-sezione-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 26px 28px;
+    margin-bottom: 24px;
+    backdrop-filter: blur(6px);
+  }
+  .stat-sezione-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--testo-chiaro);
+    letter-spacing: 0.03em;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stat-sezione-sub {
+    font-size: 0.75rem;
+    color: var(--testo-muted);
+    margin-bottom: 20px;
+  }
+  .stat-chart-wrap {
+    background: rgba(6,33,51,0.5);
+    border: 1px solid rgba(207,88,150,0.12);
+    border-radius: 10px;
+    padding: 18px;
+    overflow-x: auto;
+    margin-top: 4px;
+  }
+  .stat-tabella-wrap {
+    overflow-x: auto;
+    margin-bottom: 22px;
+  }
+  /* Filtro anni — checkboxes sopra il grafico */
+  .stat-anni-filtro {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    padding: 4px 2px 10px;
+    min-height: 26px;
+  }
+  .stat-anni-filtro label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0.9;
+    transition: opacity 0.15s;
+    letter-spacing: 0.03em;
+  }
+  .stat-anni-filtro label:hover { opacity: 1; }
+  .stat-anni-filtro input[type="checkbox"] {
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+    accent-color: var(--rosa);
+    flex-shrink: 0;
+  }
+  .stat-tooltip {
+    position: fixed;
+    background: rgba(6,33,51,0.97);
+    color: #dce9f4;
+    font-size: 0.79rem;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 7px;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+    border: 1px solid rgba(207,88,150,0.55);
+    display: none;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
 </style>
 </head>
 <body>
@@ -5407,69 +5530,69 @@ function printInventario() {
   <div class="section-wrap">
     <div class="section-header">
       <div>
-        <div class="section-title">&#128202; <span>Statistiche</span></div>
-        <div class="section-subtitle">Andamento fatturato e utili per azienda — confronto annuale</div>
+        <div class="section-title">&#128200; Statistiche <span>Aziendali</span></div>
+        <div class="section-subtitle">Fatturato e utili mensili per azienda &#8212; confronto annuale</div>
       </div>
     </div>
-    <!-- Selettore azienda e anni -->
-    <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;padding:20px 24px;margin-bottom:22px;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
-      <div style="flex:2;min-width:200px;">
-        <label style="display:block;font-size:0.68rem;font-weight:700;color:var(--testo-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:7px;">Azienda</label>
-        <select id="stat-azienda-select" onchange="renderStatistiche()" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);color:var(--testo-chiaro);padding:9px 13px;border-radius:8px;font-size:0.88rem;font-family:inherit;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;">
-          <option value="">— Seleziona azienda —</option>
-        </select>
-      </div>
-      <div style="min-width:110px;">
-        <label style="display:block;font-size:0.68rem;font-weight:700;color:var(--testo-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:7px;">Anno precedente</label>
-        <input type="number" id="stat-anno-prec" min="2015" max="2099" onchange="renderStatistiche()" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);color:var(--testo-chiaro);padding:9px 13px;border-radius:8px;font-size:0.88rem;font-family:inherit;outline:none;">
-      </div>
-      <div style="min-width:110px;">
-        <label style="display:block;font-size:0.68rem;font-weight:700;color:var(--rosa);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:7px;">Anno corrente</label>
-        <input type="number" id="stat-anno-corrente" min="2015" max="2099" onchange="renderStatistiche()" style="width:100%;background:var(--input-bg);border:1px solid rgba(207,88,150,0.5);color:var(--rosa);padding:9px 13px;border-radius:8px;font-size:0.88rem;font-family:inherit;outline:none;font-weight:700;">
-      </div>
+
+    <!-- Selettore Azienda -->
+    <div class="stat-az-selector-wrap">
+      <span class="stat-az-label">&#127970; Azienda</span>
+      <select class="stat-az-select" id="stat-azienda-select" onchange="renderStatistiche()">
+        <option value="">&#8212; Seleziona azienda &#8212;</option>
+      </select>
     </div>
-    <!-- Fatturato mensile -->
-    <div id="stat-panel-fatturato" style="display:none;background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;padding:22px 24px;margin-bottom:18px;">
-      <div style="font-size:0.7rem;font-weight:800;color:var(--testo-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
-        <span style="width:3px;height:12px;background:var(--rosa);border-radius:2px;display:inline-block;flex-shrink:0;"></span>
-        Fatturato mensile
+
+    <!-- Contenuto dinamico per azienda selezionata -->
+    <div id="stat-az-content" style="display:none;">
+
+      <!-- Selettore anni confronto -->
+      <div class="stat-az-selector-wrap" style="margin-bottom:18px;">
+        <span class="stat-az-label">&#128197; Anno precedente</span>
+        <input type="number" id="stat-anno-prec" min="2015" max="2099" onchange="renderStatistiche()"
+          style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--testo-chiaro);padding:8px 12px;border-radius:8px;font-size:0.85rem;font-family:inherit;outline:none;width:110px;">
+        <span class="stat-az-label" style="margin-left:4px;">Anno corrente</span>
+        <input type="number" id="stat-anno-corrente" min="2015" max="2099" onchange="renderStatistiche()"
+          style="background:var(--input-bg);border:1px solid var(--rosa-border);color:var(--rosa);padding:8px 12px;border-radius:8px;font-size:0.85rem;font-family:inherit;outline:none;width:110px;font-weight:700;">
       </div>
-      <div id="stat-tabella-fatturato" style="overflow-x:auto;margin-bottom:16px;"></div>
-      <div style="background:rgba(6,33,51,0.5);border-radius:10px;padding:12px 16px 16px;">
-        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:0.74rem;color:var(--testo-muted);margin-bottom:10px;user-select:none;">
-          <input type="checkbox" id="stat-tutti-fatturato" onchange="onStatTuttiAnni('fatturato')" style="cursor:pointer;accent-color:var(--rosa);">
-          Mostra tutti gli anni con dati
-        </label>
-        <div id="stat-filtro-anni-fatturato" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:10px;"></div>
-        <canvas id="stat-canvas-fatturato" style="display:block;max-width:100%;cursor:crosshair;"></canvas>
+
+      <!-- ===== FATTURATO ===== -->
+      <div class="stat-sezione-card">
+        <div class="stat-sezione-title">&#128176; Fatturato Mensile</div>
+        <div class="stat-sezione-sub">Inserisci i dati per i due anni selezionati. Il grafico mostra tutti gli anni con dati disponibili.</div>
+
+        <div id="stat-inc-fatturato" style="margin-bottom:18px;"></div>
+
+        <div class="stat-tabella-wrap" id="stat-tabella-fatturato"></div>
+
+        <div class="stat-chart-wrap">
+          <div id="stat-filtro-anni-fatturato" class="stat-anni-filtro"></div>
+          <canvas id="stat-canvas-fatturato" height="200" style="cursor:crosshair;display:block;max-width:100%;"></canvas>
+        </div>
       </div>
+
+      <!-- ===== UTILI ===== -->
+      <div class="stat-sezione-card">
+        <div class="stat-sezione-title">&#128184; Utili Mensili</div>
+        <div class="stat-sezione-sub">Inserisci i dati per i due anni selezionati. Il grafico mostra tutti gli anni con dati disponibili.</div>
+
+        <div id="stat-inc-utili" style="margin-bottom:18px;"></div>
+
+        <div class="stat-tabella-wrap" id="stat-tabella-utili"></div>
+
+        <div class="stat-chart-wrap">
+          <div id="stat-filtro-anni-utili" class="stat-anni-filtro"></div>
+          <canvas id="stat-canvas-utili" height="200" style="cursor:crosshair;display:block;max-width:100%;"></canvas>
+        </div>
+      </div>
+
+    </div><!-- /stat-az-content -->
+
+    <div id="stat-az-empty" class="empty-state" style="display:none;margin-top:32px;">
+      <div class="empty-state-icon">&#127970;</div>
+      <div class="empty-state-text">Nessuna azienda presente. Aggiungi partner e clienti nella sezione Clienti.</div>
     </div>
-    <!-- Utili mensili -->
-    <div id="stat-panel-utili" style="display:none;background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;padding:22px 24px;margin-bottom:18px;">
-      <div style="font-size:0.7rem;font-weight:800;color:var(--testo-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
-        <span style="width:3px;height:12px;background:var(--rosa);border-radius:2px;display:inline-block;flex-shrink:0;"></span>
-        Utili mensili
-      </div>
-      <div id="stat-tabella-utili" style="overflow-x:auto;margin-bottom:16px;"></div>
-      <div style="background:rgba(6,33,51,0.5);border-radius:10px;padding:12px 16px 16px;">
-        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:0.74rem;color:var(--testo-muted);margin-bottom:10px;user-select:none;">
-          <input type="checkbox" id="stat-tutti-utili" onchange="onStatTuttiAnni('utili')" style="cursor:pointer;accent-color:var(--rosa);">
-          Mostra tutti gli anni con dati
-        </label>
-        <div id="stat-filtro-anni-utili" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:10px;"></div>
-        <canvas id="stat-canvas-utili" style="display:block;max-width:100%;cursor:crosshair;"></canvas>
-      </div>
-    </div>
-    <!-- Riepilogo incremento annuale -->
-    <div id="stat-panel-incremento" style="display:none;background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;padding:22px 24px;margin-bottom:18px;">
-      <div style="font-size:0.7rem;font-weight:800;color:var(--testo-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-        <span style="width:3px;height:12px;background:var(--rosa);border-radius:2px;display:inline-block;flex-shrink:0;"></span>
-        Riepilogo incremento annuale
-      </div>
-      <div id="stat-inc-fatturato" style="margin-bottom:14px;"></div>
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(207,88,150,0.2),transparent);margin:14px 0;"></div>
-      <div id="stat-inc-utili"></div>
-    </div>
+
   </div>
 </div>
 
@@ -6274,6 +6397,8 @@ function salvaStatisticaValore(azId, tipo, anno, mese, valore) {
     var aP2 = parseInt(elPrec2.value) || (aC2 - 1);
     disegnaGraficoStatistiche('stat-canvas-fatturato', aP2, aC2, selAz2.value, 'fatturato');
     disegnaGraficoStatistiche('stat-canvas-utili', aP2, aC2, selAz2.value, 'utili');
+    aggiornaFiltroAnni('fatturato', selAz2.value);
+    aggiornaFiltroAnni('utili', selAz2.value);
   }, 80);
 }
 
@@ -6307,17 +6432,8 @@ function aggiornaFiltroAnni(tipo, azId) {
   var canvasId = 'stat-canvas-' + tipo;
   var filtroDiv = document.getElementById('stat-filtro-anni-' + tipo);
   if (!filtroDiv) return;
-  var checkId = 'stat-tutti-' + tipo;
-  var checkEl = document.getElementById(checkId);
-  var tuttiMode = checkEl && checkEl.checked;
 
-  if (!tuttiMode) {
-    filtroDiv.style.display = 'none';
-    filtroDiv.innerHTML = '';
-    return;
-  }
-
-  // Raccoglie anni disponibili
+  // Raccoglie anni disponibili (filtro sempre visibile — nessun toggle)
   var dati = (state.statistiche && state.statistiche[azId] && state.statistiche[azId][tipo]) || {};
   var anniSet = {};
   var chiavi = Object.keys(dati);
@@ -6384,10 +6500,8 @@ function disegnaGraficoStatistiche(canvasId, annoPrec, annoCorr, azId, tipo) {
 
   var dati = (state.statistiche && state.statistiche[azId] && state.statistiche[azId][tipo]) || {};
 
-  // Determina modalità: tutti gli anni o solo i due selezionati
-  var checkId = 'stat-tutti-' + tipo;
-  var checkEl = document.getElementById(checkId);
-  var tuttiAnni = checkEl && checkEl.checked;
+  // Multi-anno: mostra sempre tutti gli anni disponibili (filtro via checkboxes)
+  var tuttiAnni = true;
 
   // Raccoglie tutti gli anni con dati presenti
   var anniSet = {};
@@ -6621,19 +6735,16 @@ function renderStatistiche() {
   if (!annoPrec || isNaN(annoPrec)) { annoPrec = annoCorr - 1; if (elPrec) elPrec.value = annoPrec; }
 
   var azId = selAz.value;
-  var pFatt = document.getElementById('stat-panel-fatturato');
-  var pUtil = document.getElementById('stat-panel-utili');
-  var pInc  = document.getElementById('stat-panel-incremento');
+  var content = document.getElementById('stat-az-content');
+  var emptyEl = document.getElementById('stat-az-empty');
 
   if (!azId) {
-    if (pFatt) pFatt.style.display = 'none';
-    if (pUtil) pUtil.style.display = 'none';
-    if (pInc)  pInc.style.display  = 'none';
+    if (content) content.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = (getAziendeList().length === 0) ? '' : 'none';
     return;
   }
-  if (pFatt) pFatt.style.display = '';
-  if (pUtil) pUtil.style.display = '';
-  if (pInc)  pInc.style.display  = '';
+  if (content) content.style.display = '';
+  if (emptyEl) emptyEl.style.display = 'none';
 
   var statAz = (state.statistiche && state.statistiche[azId]) || {};
 
