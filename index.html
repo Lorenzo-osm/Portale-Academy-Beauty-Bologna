@@ -6533,7 +6533,7 @@ function disegnaGraficoStatistiche(canvasId, annoPrec, annoCorr, azId, tipo) {
     for (var m = 1; m <= 12; m++) {
       var mm = m < 10 ? '0' + m : String(m);
       var v = dati[String(anniDaMostrare[ai]) + '-' + mm];
-      if (v !== undefined && v >= 0) allVals.push(v);
+      if (v !== undefined) allVals.push(v);
     }
   }
   if (allVals.length === 0) {
@@ -6541,7 +6541,12 @@ function disegnaGraficoStatistiche(canvasId, annoPrec, annoCorr, azId, tipo) {
     ctx.fillText('Nessun dato inserito', W / 2, H / 2);
     return;
   }
-  var maxVal = Math.max.apply(null, allVals) || 1;
+  var maxVal = Math.max.apply(null, allVals);
+  var minVal = Math.min.apply(null, allVals);
+  if (minVal > 0) minVal = 0;    // scala parte da 0 se tutti i valori sono positivi
+  if (maxVal < 0) maxVal = 0;    // se tutti negativi, il massimo è 0
+  if (maxVal === minVal) maxVal = minVal + 1; // evita divisione per zero
+  var rangeVal = maxVal - minVal;
 
   // Legenda in alto
   var legRighe = Math.ceil(anniDaMostrare.length / 4);
@@ -6556,11 +6561,24 @@ function disegnaGraficoStatistiche(canvasId, annoPrec, annoCorr, azId, tipo) {
     var gy = padT + chartH - (s / 4) * chartH;
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(W - padR, gy); ctx.stroke();
-    var lab = maxVal >= 1000
-      ? (((s / 4) * maxVal / 1000).toFixed(0) + 'k')
-      : Math.round((s / 4) * maxVal).toString();
+    var labVal = minVal + (s / 4) * rangeVal;
+    var lab = Math.abs(labVal) >= 1000
+      ? ((labVal / 1000).toFixed(0) + 'k')
+      : Math.round(labVal).toString();
     ctx.fillStyle = '#8fa8b8'; ctx.font = '10px Segoe UI'; ctx.textAlign = 'right';
     ctx.fillText('€' + lab, padL - 4, gy + 3);
+  }
+
+  // Linea dello zero (solo se il range include valori negativi)
+  if (minVal < 0) {
+    var zeroY = padT + chartH - ((0 - minVal) / rangeVal) * chartH;
+    ctx.strokeStyle = 'rgba(255,255,255,0.38)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(padL, zeroY); ctx.lineTo(W - padR, zeroY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#aabbc8'; ctx.font = '9px Segoe UI'; ctx.textAlign = 'right';
+    ctx.fillText('€0', padL - 4, zeroY + 3);
   }
 
   // Etichette X
@@ -6576,7 +6594,7 @@ function disegnaGraficoStatistiche(canvasId, annoPrec, annoCorr, azId, tipo) {
       if (data[di] === null) {
         if (seg.length > 0) { segmenti.push(seg); seg = []; }
       } else {
-        seg.push({ x: padL + di * stepX, y: padT + chartH - (data[di] / maxVal) * chartH });
+        seg.push({ x: padL + di * stepX, y: padT + chartH - ((data[di] - minVal) / rangeVal) * chartH });
       }
     }
     if (seg.length > 0) segmenti.push(seg);
@@ -6643,7 +6661,7 @@ function disegnaGraficoStatistiche(canvasId, annoPrec, annoCorr, azId, tipo) {
           anno: annoL,
           mese: ml,
           x: padL + (ml - 1) * stepX,
-          y: padT + chartH - (vl / maxVal) * chartH,
+          y: padT + chartH - ((vl - minVal) / rangeVal) * chartH,
           val: vl
         });
       }
