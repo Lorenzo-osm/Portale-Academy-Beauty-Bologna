@@ -2464,6 +2464,7 @@
   <button class="nav-btn" onclick="showPage('inventario')" id="nav-inventario">Inventario</button>
   <button class="nav-btn" onclick="showPage('statistiche')" id="nav-statistiche">Statistiche</button>
   <button class="nav-btn" onclick="showPage('organigramma')" id="nav-organigramma">Organigramma</button>
+  <button class="nav-btn" onclick="esportaDati()" title="Esporta clienti e consulenti in JSON per il Wiki">&#8595; Esporta dati</button>
   <div class="edition-badge" id="navbar-edition">—</div>
   <button class="nav-btn-admin-ab" id="nav-btn-admin-ab" onclick="showAdminPanel()" style="display:none;">&#9881; Admin</button>
   <div class="nav-user-ab" id="nav-user-label" style="display:none;"></div>
@@ -7294,6 +7295,80 @@ function addCanvasTooltip(canvasId) {
   canvas.addEventListener('mouseleave', function() {
     if (window._statTooltipDiv) window._statTooltipDiv.style.display = 'none';
   });
+}
+
+// ===== ESPORTA DATI PER WIKI =====
+function buildExportPayload() {
+  const now = new Date();
+  const ts = now.toISOString().slice(0, 16).replace('T', ' ');
+
+  const consulenti = [];
+  (state.partners || []).forEach(function(p) {
+    (p.consulenti || []).forEach(function(c) {
+      consulenti.push({ nome: c.name, partner: p.name });
+    });
+  });
+
+  const clientiMap = {};
+  (state.iscritti || []).forEach(function(i) {
+    const key = (i.nome || '') + '|' + (i.cognome || '') + '|' + (i.azienda || '');
+    if (!clientiMap[key]) {
+      clientiMap[key] = {
+        nome: i.nome || '',
+        cognome: i.cognome || '',
+        azienda: i.azienda || '',
+        consulente: i.consulente || '',
+        partner: i.partner || '',
+        stato: 'fermo',
+        storico_mensile: []
+      };
+    }
+    clientiMap[key].storico_mensile.push({
+      edizione: i.edition || '',
+      presenza: !!i.presenza,
+      programmazione: i.programmazione || ''
+    });
+    if (i.presenza) clientiMap[key].stato = 'attivo';
+  });
+
+  return {
+    progetto: 'Academy Beauty',
+    edizione_corrente: state.edition,
+    esportato_il: ts,
+    consulenti: consulenti,
+    clienti: Object.values(clientiMap)
+  };
+}
+
+async function esportaDati() {
+  const json = JSON.stringify(buildExportPayload(), null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const filename = 'export-dati.json';
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      toast('Esportazione completata.');
+    } catch (e) {
+      if (e.name !== 'AbortError') _downloadFallback(blob, filename);
+    }
+  } else {
+    _downloadFallback(blob, filename);
+  }
+}
+
+function _downloadFallback(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+  toast('File scaricato — spostalo in FONTI/PORTALI/Sito Academy Beauty/');
 }
 </script>
 
