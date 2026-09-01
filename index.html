@@ -2464,7 +2464,7 @@
   <button class="nav-btn" onclick="showPage('inventario')" id="nav-inventario">Inventario</button>
   <button class="nav-btn" onclick="showPage('statistiche')" id="nav-statistiche">Statistiche</button>
   <button class="nav-btn" onclick="showPage('organigramma')" id="nav-organigramma">Organigramma</button>
-  <button class="nav-btn" onclick="esportaDati()" title="Esporta clienti e consulenti in JSON per il Wiki">&#8595; Esporta dati</button>
+  <button class="nav-btn" id="nav-btn-esporta" onclick="esportaDati()" title="Esporta clienti e consulenti in JSON per il Wiki" style="display:none;">&#8595; Esporta dati</button>
   <div class="edition-badge" id="navbar-edition">—</div>
   <button class="nav-btn-admin-ab" id="nav-btn-admin-ab" onclick="showAdminPanel()" style="display:none;">&#9881; Admin</button>
   <div class="nav-user-ab" id="nav-user-label" style="display:none;"></div>
@@ -5425,6 +5425,7 @@ function showErrorOverlay(msg) {
 
 async function init() {
   await load();
+  initAuth(); // Inizializza authAdmin/authUsers in state (e su Firestore al primo avvio)
   syncDebriefing();
   renderEdizioni();
   renderPartners();
@@ -6190,8 +6191,6 @@ function onFiltroIscrittiChange() {
 // ===== AUTH: SISTEMA LOGIN / RUOLI =====
 
 const AUTH_KEYS = {
-  admin:   'ab_auth_admin',
-  users:   'ab_auth_users',
   session: 'ab_auth_session'
 };
 
@@ -6201,23 +6200,40 @@ function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// ---- Inizializzazione dati auth ----
+// ---- Inizializzazione dati auth in state (dopo load da Firestore) ----
 function initAuth() {
-  if (!localStorage.getItem(AUTH_KEYS.admin)) {
-    localStorage.setItem(AUTH_KEYS.admin, JSON.stringify({
+  // Se authAdmin non esiste ancora in state (primo avvio), inizializza con le credenziali di default
+  if (!state.authAdmin) {
+    state.authAdmin = {
       email: 'l.gorgo@osmpartnerbologna.it',
       password: 'Dybalronaldo055!',
       nome: 'Lorenzo',
       cognome: 'Gorgò'
-    }));
+    };
+    save(); // Persiste subito su Firestore
   }
-  if (!localStorage.getItem(AUTH_KEYS.users)) {
-    localStorage.setItem(AUTH_KEYS.users, JSON.stringify([]));
+  if (!state.authUsers) {
+    state.authUsers = [];
+    save();
+  }
+}
+
+// ---- Caricamento leggero solo dati auth da Firestore (stesso documento, nessuna nuova regola) ----
+async function loadAuthOnly() {
+  try {
+    const docSnap = await db.collection('portali').doc('academy-beauty').get();
+    if (docSnap.exists) {
+      const parsed = docSnap.data();
+      if (parsed.authAdmin !== undefined) state.authAdmin = parsed.authAdmin;
+      if (parsed.authUsers !== undefined) state.authUsers = parsed.authUsers;
+    }
+  } catch(e) {
+    console.error('[Academy Beauty] Errore caricamento auth da Firestore:', e);
   }
 }
 
 // ---- Login ----
-function doLogin() {
+async function doLogin() {
   const emailRaw = (document.getElementById('login-email').value || '').trim();
   const email    = emailRaw.toLowerCase();
   const pwd      = document.getElementById('login-pwd').value || '';
@@ -6231,40 +6247,55 @@ function doLogin() {
     return;
   }
 
+  // Mostra spinner durante il caricamento auth
+  document.getElementById('view-login').classList.add('hidden');
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = 'flex';
+
+  // Carica solo authAdmin/authUsers da Firestore (lettura leggera, stesso documento)
+  await loadAuthOnly();
+
+  // Primo avvio: authAdmin non ancora su Firestore — usa credenziali di default
+  if (!state.authAdmin) {
+    state.authAdmin = {
+      email: 'l.gorgo@osmpartnerbologna.it',
+      password: 'Dybalronaldo055!',
+      nome: 'Lorenzo',
+      cognome: 'Gorgò'
+    };
+  }
+  if (!state.authUsers) state.authUsers = [];
+
   // Controlla admin
-  const admin = JSON.parse(localStorage.getItem(AUTH_KEYS.admin) || 'null');
-  if (admin && email === admin.email.toLowerCase() && pwd === admin.password) {
+  const admin = state.authAdmin;
+  if (email === admin.email.toLowerCase() && pwd === admin.password) {
     sessionStorage.setItem(AUTH_KEYS.session, JSON.stringify({
       ruolo: 'admin', email: admin.email,
       nome: admin.nome, cognome: admin.cognome
     }));
-    _avviaCaricamento();
+    await init();
+    avviaSessione();
     return;
   }
 
   // Controlla utenti PM / Consulente
-  const users = JSON.parse(localStorage.getItem(AUTH_KEYS.users) || '[]');
+  const users = state.authUsers;
   const user  = users.find(u => u.email.toLowerCase() === email && u.password === pwd);
   if (user) {
     sessionStorage.setItem(AUTH_KEYS.session, JSON.stringify({
       ruolo: user.ruolo, email: user.email,
       nome: user.nome, cognome: user.cognome
     }));
-    _avviaCaricamento();
+    await init();
+    avviaSessione();
     return;
   }
 
+  // Credenziali non valide — ripristina schermata login
+  if (overlay) overlay.style.display = 'none';
+  document.getElementById('view-login').classList.remove('hidden');
   errEl.textContent = 'Credenziali non valide. Controlla email e password.';
   errEl.classList.add('show');
-}
-
-function _avviaCaricamento() {
-  // Nascondi schermata login, mostra spinner
-  document.getElementById('view-login').classList.add('hidden');
-  const overlay = document.getElementById('loading-overlay');
-  if (overlay) overlay.style.display = 'flex';
-  // Carica Firestore e avvia sessione
-  init().then(function() { avviaSessione(); });
 }
 
 // ---- Logout ----
@@ -6286,6 +6317,7 @@ function avviaSessione() {
 
   if (sess.ruolo === 'admin') {
     document.getElementById('nav-btn-admin-ab').style.display = '';
+    document.getElementById('nav-btn-esporta').style.display = '';
     showPage('home');
   } else if (sess.ruolo === 'pm') {
     // PM: accesso completo, no pulsante Admin
@@ -6349,7 +6381,7 @@ function switchAdminTab(tab, btn) {
   document.getElementById('admin-tab-impostazioni').classList.toggle('active', tab === 'impostazioni');
 
   if (tab === 'impostazioni') {
-    var admin = JSON.parse(localStorage.getItem(AUTH_KEYS.admin) || 'null');
+    var admin = state.authAdmin || null;
     if (admin) document.getElementById('settings-email').value = admin.email;
     document.getElementById('settings-password').value = '';
     document.getElementById('settings-confirm-pwd').value = '';
@@ -6367,8 +6399,8 @@ function renderUsersListAb() {
   var container = document.getElementById('users-list-ab');
   if (!container) return;
 
-  var admin = JSON.parse(localStorage.getItem(AUTH_KEYS.admin) || 'null');
-  var users = JSON.parse(localStorage.getItem(AUTH_KEYS.users) || '[]');
+  var admin = state.authAdmin || null;
+  var users = state.authUsers || [];
   var html = '';
 
   if (admin) {
@@ -6419,8 +6451,8 @@ function creaAccountAb() {
     alertEl.classList.add('show', 'alert-ab-error'); return;
   }
 
-  var admin = JSON.parse(localStorage.getItem(AUTH_KEYS.admin) || 'null');
-  var users = JSON.parse(localStorage.getItem(AUTH_KEYS.users) || '[]');
+  var admin = state.authAdmin || null;
+  var users = state.authUsers || [];
 
   if (admin && admin.email.toLowerCase() === email) {
     alertEl.textContent = 'Email già in uso dall\'account Admin.';
@@ -6432,7 +6464,8 @@ function creaAccountAb() {
   }
 
   users.push({ id: (Date.now().toString(36) + Math.random().toString(36).slice(2)), email: email, password: password, nome: nome, cognome: cognome, ruolo: ruolo });
-  localStorage.setItem(AUTH_KEYS.users, JSON.stringify(users));
+  state.authUsers = users;
+  save();
 
   document.getElementById('new-acc-nome').value = '';
   document.getElementById('new-acc-cognome').value = '';
@@ -6446,11 +6479,12 @@ function creaAccountAb() {
 }
 
 function eliminaAccountAb(idx) {
-  var users = JSON.parse(localStorage.getItem(AUTH_KEYS.users) || '[]');
+  var users = state.authUsers || [];
   if (!users[idx]) return;
   if (!confirm('Eliminare l\'account di ' + users[idx].nome + ' ' + users[idx].cognome + '? L\'operazione non è reversibile.')) return;
   users.splice(idx, 1);
-  localStorage.setItem(AUTH_KEYS.users, JSON.stringify(users));
+  state.authUsers = users;
+  save();
   renderUsersListAb();
 }
 
@@ -6462,7 +6496,7 @@ function salvaImpostazioniAdmin() {
 
   alertEl.classList.remove('show', 'alert-ab-success', 'alert-ab-error');
 
-  var admin = JSON.parse(localStorage.getItem(AUTH_KEYS.admin) || 'null');
+  var admin = state.authAdmin || null;
   if (!admin) return;
 
   if (!confirmPwd || confirmPwd !== admin.password) {
@@ -6474,7 +6508,7 @@ function salvaImpostazioniAdmin() {
     alertEl.classList.add('show', 'alert-ab-error'); return;
   }
 
-  var users = JSON.parse(localStorage.getItem(AUTH_KEYS.users) || '[]');
+  var users = state.authUsers || [];
   if (users.some(function(u) { return u.email.toLowerCase() === nuovaEmail; })) {
     alertEl.textContent = 'Email già in uso da un altro account.';
     alertEl.classList.add('show', 'alert-ab-error'); return;
@@ -6482,7 +6516,8 @@ function salvaImpostazioniAdmin() {
 
   admin.email = nuovaEmail;
   if (nuovaPwd) admin.password = nuovaPwd;
-  localStorage.setItem(AUTH_KEYS.admin, JSON.stringify(admin));
+  state.authAdmin = admin;
+  save();
 
   // Aggiorna sessione corrente
   var sess = JSON.parse(sessionStorage.getItem(AUTH_KEYS.session) || 'null');
@@ -6500,8 +6535,6 @@ function salvaImpostazioniAdmin() {
 
 // ---- Avvio protetto con auth ----
 (async function() {
-  initAuth();
-
   var sess = JSON.parse(sessionStorage.getItem(AUTH_KEYS.session) || 'null');
   if (!sess) {
     // Non loggato: mostra schermata login, nascondi loading overlay
