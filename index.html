@@ -2543,6 +2543,35 @@
   </div>
 </div>
 
+<!-- ===== MODALE TRASFERIMENTO PERSONA ===== -->
+<div class="trasferisci-overlay" id="trasferisci-persona-overlay" onclick="closeTrasferisciPersonaModal(event)">
+  <div class="trasferisci-modal" onclick="event.stopPropagation()">
+    <div class="trasferisci-modal-title">
+      <span class="icon">&#8651;</span>
+      Trasferisci Persona
+    </div>
+    <div class="trasferisci-modal-sub" id="trasferisci-persona-sub">
+      Scegli l&rsquo;azienda di destinazione per questa persona.
+    </div>
+    <div class="trasferisci-group">
+      <label class="trasferisci-label">Destinazione &mdash; Partner</label>
+      <select class="trasferisci-select" id="tp-partner-sel" onchange="onTrasferisciPersonaPartnerChange()"></select>
+    </div>
+    <div class="trasferisci-group">
+      <label class="trasferisci-label">Destinazione &mdash; Consulente</label>
+      <select class="trasferisci-select" id="tp-consulente-sel" onchange="onTrasferisciPersonaConsulenteChange()"></select>
+    </div>
+    <div class="trasferisci-group">
+      <label class="trasferisci-label">Destinazione &mdash; Azienda</label>
+      <select class="trasferisci-select" id="tp-azienda-sel"></select>
+    </div>
+    <div class="trasferisci-actions">
+      <button class="btn btn-ghost" onclick="closeTrasferisciPersonaModal()">Annulla</button>
+      <button class="btn-trasferisci" id="tp-confirm-btn" onclick="confirmTrasferisciPersona()">&#8651; Trasferisci</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== PAGE: HOME ===== -->
 <div class="page active" id="page-home">
   <div class="home-hero">
@@ -3269,6 +3298,7 @@ function renderAzienda(container, pi, ci, ai) {
         <input type="checkbox" ${p.iscritta !== false ? 'checked' : ''} onchange="togglePersonaIscritta(${pi},${ci},${ai},${pIdx},this.checked)">
       </label>
       <span class="persona-nome" style="${p.iscritta === false ? 'opacity:0.5;text-decoration:line-through;' : ''}">${escHtml(p.nome)} ${escHtml(p.cognome)}</span>
+      <button class="btn" style="padding:2px 6px;font-size:0.68rem;color:var(--rosa);border:1px solid rgba(207,88,150,0.3);background:transparent;border-radius:5px;cursor:pointer;line-height:1.2;" onclick="openTrasferisciPersonaModal(${pi},${ci},${ai},${pIdx})" title="Trasferisci a un'altra azienda">&#8651;</button>
       <button class="btn btn-danger" style="padding:2px 7px;font-size:0.72rem;" onclick="removePersonaAzienda(${pi},${ci},${ai},${pIdx})">&#215;</button>
     </div>`).join('');
 
@@ -3537,6 +3567,151 @@ function confirmTrasferisci() {
   toast('Trasferito a ' + destCons + ' (' + destPartner + ')');
 }
 
+// ===== TRASFERIMENTO PERSONA TRA AZIENDE =====
+var _trasferisciPersonaSrc = null; // { pi, ci, ai, pIdx }
+
+function openTrasferisciPersonaModal(pi, ci, ai, pIdx) {
+  _trasferisciPersonaSrc = { pi: pi, ci: ci, ai: ai, pIdx: pIdx };
+  var az = state.partners[pi].consulenti[ci].aziende[ai];
+  var persona = az.persone[pIdx];
+  var sub = document.getElementById('trasferisci-persona-sub');
+  sub.innerHTML = 'Trasferisci <strong style="color:var(--testo-chiaro)">' + escHtml(persona.nome) + ' ' + escHtml(persona.cognome) + '</strong><br>' +
+    '<span style="color:var(--testo-muted)">Da: ' + escHtml(state.partners[pi].name) + ' &rarr; ' + escHtml(state.partners[pi].consulenti[ci].name) + ' &rarr; ' + escHtml(az.name) + '</span>';
+  // Popola partner
+  var partnerSel = document.getElementById('tp-partner-sel');
+  partnerSel.innerHTML = '';
+  state.partners.forEach(function(p, pIdx2) {
+    var opt = document.createElement('option');
+    opt.value = pIdx2;
+    opt.textContent = p.name;
+    if (pIdx2 === pi) opt.selected = true;
+    partnerSel.appendChild(opt);
+  });
+  _populateTpConsulenti(pi);
+  document.getElementById('trasferisci-persona-overlay').classList.add('show');
+}
+
+function _populateTpConsulenti(targetPi) {
+  var consSel = document.getElementById('tp-consulente-sel');
+  consSel.innerHTML = '';
+  var partner = state.partners[targetPi];
+  if (!partner || partner.consulenti.length === 0) {
+    var opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '— Nessun consulente —';
+    opt.disabled = true;
+    consSel.appendChild(opt);
+    _populateTpAziende(targetPi, -1);
+    return;
+  }
+  partner.consulenti.forEach(function(c, cIdx) {
+    var opt = document.createElement('option');
+    opt.value = cIdx;
+    opt.textContent = c.name;
+    consSel.appendChild(opt);
+  });
+  _populateTpAziende(targetPi, parseInt(consSel.value) || 0);
+}
+
+function onTrasferisciPersonaPartnerChange() {
+  var pi2 = parseInt(document.getElementById('tp-partner-sel').value);
+  _populateTpConsulenti(pi2);
+}
+
+function onTrasferisciPersonaConsulenteChange() {
+  var pi2 = parseInt(document.getElementById('tp-partner-sel').value);
+  var ci2 = parseInt(document.getElementById('tp-consulente-sel').value);
+  _populateTpAziende(pi2, ci2);
+}
+
+function _populateTpAziende(targetPi, targetCi) {
+  var azSel = document.getElementById('tp-azienda-sel');
+  azSel.innerHTML = '';
+  var src = _trasferisciPersonaSrc || {};
+  var cons = (state.partners[targetPi] && targetCi >= 0) ? state.partners[targetPi].consulenti[targetCi] : null;
+  if (!cons || !cons.aziende || cons.aziende.length === 0) {
+    var opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '— Nessuna azienda —';
+    opt.disabled = true;
+    azSel.appendChild(opt);
+    document.getElementById('tp-confirm-btn').disabled = true;
+    return;
+  }
+  var hasValid = false;
+  cons.aziende.forEach(function(az, azIdx) {
+    if (targetPi === src.pi && targetCi === src.ci && azIdx === src.ai) return; // sorgente
+    var opt = document.createElement('option');
+    opt.value = azIdx;
+    opt.textContent = az.name;
+    azSel.appendChild(opt);
+    hasValid = true;
+  });
+  if (!hasValid) {
+    var opt2 = document.createElement('option');
+    opt2.value = '';
+    opt2.textContent = '— Nessuna altra azienda disponibile —';
+    opt2.disabled = true;
+    azSel.appendChild(opt2);
+    document.getElementById('tp-confirm-btn').disabled = true;
+  } else {
+    document.getElementById('tp-confirm-btn').disabled = false;
+  }
+}
+
+function closeTrasferisciPersonaModal(e) {
+  if (e && e.target !== document.getElementById('trasferisci-persona-overlay')) return;
+  document.getElementById('trasferisci-persona-overlay').classList.remove('show');
+  _trasferisciPersonaSrc = null;
+}
+
+function confirmTrasferisciPersona() {
+  if (!_trasferisciPersonaSrc) return;
+  var src = _trasferisciPersonaSrc;
+  var targetPi = parseInt(document.getElementById('tp-partner-sel').value);
+  var targetCi = parseInt(document.getElementById('tp-consulente-sel').value);
+  var targetAi = parseInt(document.getElementById('tp-azienda-sel').value);
+  if (isNaN(targetPi) || isNaN(targetCi) || isNaN(targetAi)) {
+    toast('Seleziona un\'azienda di destinazione'); return;
+  }
+  if (targetPi === src.pi && targetCi === src.ci && targetAi === src.ai) {
+    toast('La persona è già in questa azienda'); return;
+  }
+  var azSrc = state.partners[src.pi].consulenti[src.ci].aziende[src.ai];
+  var persona = azSrc.persone[src.pIdx];
+  var azDest = state.partners[targetPi].consulenti[targetCi].aziende[targetAi];
+  // Controlla duplicati
+  var dup = (azDest.persone || []).some(function(p) {
+    return p.nome.toLowerCase() === persona.nome.toLowerCase() &&
+           p.cognome.toLowerCase() === persona.cognome.toLowerCase();
+  });
+  if (dup) { toast('Persona già presente nell\'azienda di destinazione'); return; }
+  var partnerDestName = state.partners[targetPi].name;
+  var consDestName = state.partners[targetPi].consulenti[targetCi].name;
+  var azDestName = azDest.name;
+  // Aggiorna tutti i record iscritti collegati
+  state.iscritti.forEach(function(isc) {
+    if (
+      (isc.nome || '').toLowerCase() === (persona.nome || '').toLowerCase() &&
+      (isc.cognome || '').toLowerCase() === (persona.cognome || '').toLowerCase() &&
+      isc.azienda === azSrc.name
+    ) {
+      isc.azienda = azDestName;
+      isc.partner = partnerDestName;
+      isc.consulente = consDestName;
+    }
+  });
+  // Sposta la persona
+  if (!azDest.persone) azDest.persone = [];
+  azDest.persone.push(persona);
+  azSrc.persone.splice(src.pIdx, 1);
+  document.getElementById('trasferisci-persona-overlay').classList.remove('show');
+  _trasferisciPersonaSrc = null;
+  save();
+  renderPartners();
+  toast('Trasferita ' + persona.nome + ' ' + persona.cognome + ' a ' + azDestName);
+}
+
 function updatePartnerName(pi, val) {
   state.partners[pi].name = val;
   save();
@@ -3723,7 +3898,7 @@ function renderIscritti() {
           <input class="td-input ${isTop5 ? 'oro-value' : ''}" type="number" min="0" max="9999" step="0.1"
             value="${isc.fatturato||''}" style="min-width:80px;"
             onchange="updateIscritto(${globalIdx},'fatturato',this.value);renderIscritti()">
-          ${checkAlertFatturatiConsecutivi(findAziendaId(isc.azienda)) ? '<span title="Calo fatturato per 2 o più mesi consecutivi rispetto all\'anno precedente" style="color:#e05555;font-size:0.88rem;cursor:default;flex-shrink:0;" aria-label="Attenzione fatturato">&#9888;</span>' : ''}
+          ${checkAlertFatturatiConsecutivi(findAziendaId(isc.azienda)) ? '<span title="Calo fatturato per 2 mesi consecutivi rispetto al mese di edizione" style="color:#e05555;font-size:0.88rem;cursor:default;flex-shrink:0;" aria-label="Attenzione fatturato">&#9888;</span>' : ''}
         </div>
       </td>
       <td>
@@ -6587,21 +6762,28 @@ function findAziendaId(nomeAzienda) {
 function checkAlertFatturatiConsecutivi(azId) {
   if (!azId || !state.statistiche || !state.statistiche[azId]) return false;
   var fatturato = (state.statistiche[azId].fatturato) || {};
-  var annoCorrente = new Date().getFullYear();
-  var annoPrec = annoCorrente - 1;
-  var cons = 0;
-  for (var m = 1; m <= 12; m++) {
-    var mm = m < 10 ? '0' + m : String(m);
-    var kC = String(annoCorrente) + '-' + mm;
-    var kP = String(annoPrec) + '-' + mm;
-    var vC = parseFloat(fatturato[kC]);
-    var vP = parseFloat(fatturato[kP]);
-    if (!isNaN(vC) && !isNaN(vP) && vC > 0 && vP > 0) {
-      if (vC < vP) { cons++; if (cons >= 2) return true; }
-      else cons = 0;
-    } else { cons = 0; }
+  // Parsa l'edizione corrente per individuare i 3 mesi di riferimento
+  var MESI_NOMI_CHK = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                       'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var parts = (state.edition || '').trim().split(' ');
+  var meseEd = MESI_NOMI_CHK.indexOf(parts[0]); // 0-based
+  var annoEd = parseInt(parts[1]);
+  if (meseEd < 0 || isNaN(annoEd)) return false;
+  // Restituisce la chiave YYYY-MM per un mese 0-based (gestisce cambio anno)
+  function _meseKey(anno, m0) {
+    if (m0 < 0) { anno--; m0 += 12; }
+    var mm = (m0 + 1) < 10 ? '0' + (m0 + 1) : String(m0 + 1);
+    return String(anno) + '-' + mm;
   }
-  return false;
+  var k3 = _meseKey(annoEd, meseEd - 3); // 3 mesi prima dell'edizione
+  var k2 = _meseKey(annoEd, meseEd - 2); // 2 mesi prima
+  var k1 = _meseKey(annoEd, meseEd - 1); // 1 mese prima
+  var v3 = parseFloat(fatturato[k3]);
+  var v2 = parseFloat(fatturato[k2]);
+  var v1 = parseFloat(fatturato[k1]);
+  if (isNaN(v3) || isNaN(v2) || isNaN(v1)) return false;
+  // Simbolo se: mese m-2 < mese m-3 E mese m-1 < mese m-2
+  return v2 < v3 && v1 < v2;
 }
 
 function salvaStatisticaValore(azId, tipo, anno, mese, valore) {
