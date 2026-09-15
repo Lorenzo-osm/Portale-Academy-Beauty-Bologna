@@ -4170,7 +4170,7 @@ function renderReport() {
       <td>${escHtml(isc.esercizio || '—')}</td>
       <td class="prog-cell">${escHtml(isc.programmazione || '—')}</td>
       <td>${escHtml(isc.corsoSuccessivo || '—')}</td>
-      <td><input class="td-input" type="text" value="${escHtml(isc.supervisore || '')}" style="min-width:130px;" placeholder="Supervisore" onchange="updateIscritto(${globalIdx},'supervisore',this.value)"></td>`;
+      <td>${escHtml(getSupervisoreReport(isc) || '—')}</td>`;
     tbody.appendChild(tr);
   });
 }
