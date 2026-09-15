@@ -4170,8 +4170,7 @@ function renderReport() {
       <td>${escHtml(isc.esercizio || '—')}</td>
       <td class="prog-cell">${escHtml(isc.programmazione || '—')}</td>
       <td>${escHtml(isc.corsoSuccessivo || '—')}</td>
-      <td><input class="td-input" type="text" value="${escHtml(isc.supervisoreG1 || '')}" style="min-width:130px;" placeholder="Supervisore G1" onchange="updateIscritto(${globalIdx},'supervisoreG1',this.value)"></td>
-      <td><input class="td-input" type="text" value="${escHtml(isc.supervisoreG2 || '')}" style="min-width:130px;" placeholder="Supervisore G2" onchange="updateIscritto(${globalIdx},'supervisoreG2',this.value)"></td>`;
+      <td><input class="td-input" type="text" value="${escHtml(isc.supervisore || '')}" style="min-width:130px;" placeholder="Supervisore" onchange="updateIscritto(${globalIdx},'supervisore',this.value)"></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -5771,8 +5770,7 @@ function printInventario() {
               <th>Esercizio</th>
               <th>Programmazione</th>
               <th>Corso Successivo</th>
-              <th>Supervisore Giorno 1</th>
-              <th>Supervisore Giorno 2</th>
+              <th>Supervisore</th>
             </tr>
           </thead>
           <tbody id="report-tbody"></tbody>
