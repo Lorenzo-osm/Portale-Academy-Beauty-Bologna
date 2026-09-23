@@ -1548,6 +1548,9 @@
     body.print-report table.report-table td { color: #000 !important; padding: 6px 7px !important; font-size: 0.68rem !important; }
     body.print-report table.report-table td.prog-cell { max-width: 150px !important; font-size: 0.66rem !important; }
     body.print-report .report-header-block { background: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body.print-report .report-note-textarea { display: none !important; }
+    body.print-report .report-note-print { display: block !important; white-space: pre-wrap; font-size: 0.66rem !important; color: #000 !important; min-height: 1em; }
+    body.print-report table.report-table td.report-note-cell { max-width: 140px !important; vertical-align: top !important; }
 
   }
 
@@ -1956,6 +1959,7 @@
   }
 
   .inv-print-header { display: none; }
+  .report-note-print { display: none; }
 
   /* ===== MODALE TRASFERIMENTO AZIENDA ===== */
   .trasferisci-overlay {
@@ -2302,7 +2306,6 @@
   body.consulente-mode #nav-home,
   body.consulente-mode #nav-clienti,
   body.consulente-mode #nav-firme,
-  body.consulente-mode #nav-report,
   body.consulente-mode #nav-disposizioni,
   body.consulente-mode #nav-fogliettini,
   body.consulente-mode #nav-debriefing,
@@ -3067,7 +3070,8 @@ let state = {
   regoleSconto: {},
   pmList: [],
   statistiche: {},
-  organigramma: []
+  organigramma: [],
+  reportNotes: {}
 };
 
 // ===== UTILITY =====
@@ -3108,6 +3112,7 @@ async function load() {
   if (!state.pmList) state.pmList = [];
   if (!state.statistiche) state.statistiche = {};
   if (!state.organigramma) state.organigramma = [];
+  if (!state.reportNotes) state.reportNotes = {};
   // ===== MIGRAZIONE: consolida nomi iscritti in persone[] delle aziende =====
   migratePersoneFromIscritti();
 }
@@ -4132,6 +4137,12 @@ function renderFirme() {
   });
 }
 
+function saveReportNote(iscId, edizione, valore) {
+  if (!state.reportNotes) state.reportNotes = {};
+  state.reportNotes[iscId + '_' + edizione] = valore;
+  save();
+}
+
 // ===== PAGE: REPORT PROGRAMMAZIONE =====
 function renderReport() {
   const edition = state.edition;
@@ -4157,8 +4168,19 @@ function renderReport() {
   }
   empty.style.display = 'none';
 
+  // Aggiunge colonna Note all'header se non ancora presente
+  const theadTr = tbody.closest('table') && tbody.closest('table').querySelector('thead tr');
+  if (theadTr && !theadTr.querySelector('th.report-note-th')) {
+    const th = document.createElement('th');
+    th.className = 'report-note-th';
+    th.textContent = 'Note';
+    theadTr.appendChild(th);
+  }
+
   presenti.forEach((isc, idx) => {
     const globalIdx = state.iscritti.indexOf(isc);
+    const noteKey = isc.id + '_' + edition;
+    const noteVal = (state.reportNotes && state.reportNotes[noteKey]) ? state.reportNotes[noteKey] : '';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="report-num-cell">${idx + 1}</td>
@@ -4170,7 +4192,14 @@ function renderReport() {
       <td>${escHtml(isc.esercizio || '—')}</td>
       <td class="prog-cell">${escHtml(isc.programmazione || '—')}</td>
       <td>${escHtml(isc.corsoSuccessivo || '—')}</td>
-      <td>${escHtml(getSupervisoreReport(isc) || '—')}</td>`;
+      <td>${escHtml(getSupervisoreReport(isc) || '—')}</td>
+      <td class="report-note-cell">
+        <span class="report-note-print">${escHtml(noteVal)}</span>
+        <textarea class="td-textarea report-note-textarea" rows="2"
+          data-isc-id="${escHtml(isc.id)}"
+          data-edition="${escHtml(edition)}"
+          onchange="saveReportNote(this.dataset.iscId, this.dataset.edition, this.value)">${escHtml(noteVal)}</textarea>
+      </td>`;
     tbody.appendChild(tr);
   });
 }
@@ -6516,7 +6545,7 @@ function avviaSessione() {
     (function() {
       var _orig = showPage;
       window.showPage = function(name) {
-        if (name !== 'iscritti' && name !== 'storico' && name !== 'statistiche' && name !== 'organigramma') name = 'iscritti';
+        if (name !== 'iscritti' && name !== 'storico' && name !== 'statistiche' && name !== 'organigramma' && name !== 'report') name = 'iscritti';
         _orig(name);
       };
     })();
